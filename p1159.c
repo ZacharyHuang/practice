@@ -1,11 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#define lf 1<<30
-#define rf 1<<29
-#define im 0x3FFF<<14
-#define lm 0x3FFF
 
+struct node
+{
+	short i:14;
+	short j:14;
+	char  lf:1;
+	char  rf:1;
+};
 int s2i(char s)
 {
 	if (s<='9' && s>='0') {
@@ -16,52 +19,59 @@ int s2i(char s)
 	}
 	return (s - 'a' + 36);
 }
+void nodedeal(struct node *c, int len)
+{
+	int i, j;
+	for (i = 0; i < len; i ++) {
+		if (c[i].i >= c[i].j) {
+			c[i].lf = 0;
+			c[i].rf = 0;
+			continue;
+		}
+		for (j = i + 1; j < len; j ++) {
+			if (c[i].i >= c[j].i && c[i].j <= c[j].j) {
+				c[i].lf = 0;
+				c[i].rf = 0;
+			}
+		}
+	}
+}
 int find_one_pair(char* s, int start, int end)
 {
-	int i = start;
-	int j = end;
-	int c[62];
-	memset(c, 0, 62 * sizeof(int));
-	while (i < j) {
-		int li = s2i(s[i]);
-		if (c[li] & rf) {
-			return 2 + find_one_pair(s, i, (c[li]&im)>>14);
-		}
-		if (c[li] & lf) {
-			c[li] |= i - ((c[li]&im) >> 14);
-		} else {
-			c[li] = i<<14;
-			c[li] |= lf;
-		}
-		i++;
-		if (j <= i ) {
-			break;
-		}
-		int ri = s2i(s[j]);
-		if (c[li] & lf) {
-			return 2 + find_one_pair(s, (c[li]&im)>>14, j);
-		}
-		if (c[li] & rf) {
-			c[li] |= ((c[li]&im) >> 14) - j;
-		} else {
-			c[li] = i<<14;
-			c[li] |= rf;
-		}
-		j--;
+	if (start > end) {
+		return -1;
+	} else if (start == end) {
+		return 0;
 	}
+	int i = start;
+	int j = end;	
 	int max = 0;
 	int tmp;
+	struct node c[62];
+	memset(c, 0, 62 * sizeof(struct node));
+	while (i <= end)
+	{
+		int li = s2i(s[i]);
+		if (c[li].lf == 0) {
+			c[li].i = i;
+			c[li].lf = 1;
+		}
+		int ri = s2i(s[j]);
+		if (c[ri].rf == 0) {
+			c[ri].j = j;
+			c[ri].rf = 1;
+		}
+		i++;
+		j--;
+	}
+	nodedeal(c, 62);
 	for (i = 0; i < 62; i ++) {
-		if (c[i]&lm) {
-			j = (c[i]&im)>>14;
-			if (c[i]&lf) {
-				tmp = find_one_pair(s, j, j+c[i]&lm);
-			} else if (c[i]&rf) {
-				tmp = find_one_pair(s, j-c[i]&lm, j);
-			}
-			if (tmp > max) {
-				max = tmp;
-			}
+		if (c[i].lf == 0 || c[i].rf == 0) {
+			continue;
+		}
+		tmp = 2 + find_one_pair(s, c[i].i + 1, c[i].j - 1);
+		if (tmp > max) {
+			max = tmp;					
 		}
 	}
 	return max;
